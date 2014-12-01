@@ -8,6 +8,8 @@
 #ifndef HEL_WRAPPER_H
 #define HEL_WRAPPER_H
 
+#define DEBUG true
+
 #include <stdio.h>
 #include <stdlib.h>
 extern "C" {
@@ -53,11 +55,18 @@ public:
 
 	int subscribe(uint64_t mac, char* base64);
 	int unsubscribe(uint64_t mac);
+	int open();
 	void close();
 
 private:
 	explicit Helium();
 	~Helium();
+
+	// Callback for incoming messages fron Helium
+	static void incoming_msg(const helium_connection_t *conn, uint64_t mac, char * const message, size_t count);
+
+	// Convert a message into a Node Buffer object
+	static void convertMessageToJS(char* message, v8::Local<v8::Value> argv[]);
 
 	/// ///////
 	// The Node library calls:

@@ -10,6 +10,7 @@
 #include "helium_wrapper.h"
 
 #include <iostream>
+#include <vector>
 
 using namespace v8;
 using node::ObjectWrap;
@@ -42,20 +43,15 @@ char *get(v8::Local<v8::Value> value, const char *fallback = "") {
   printf("\n");
  }
 
-void my_callback(const helium_connection_t *conn, uint64_t mac, char * const message, size_t count)
-{
-    printf("Connection %p received message from device %" PRIx64 ".\n", (void *)conn, mac);
-    hexdump(message,count);
-}
-
-
 
 Persistent<Function> Helium::constructor;
 
 
+/**
+ * Create the Helium connection object. Just prepares the API
+ * using libhelium
+ */
 Helium::Helium() {
-
-
 	helium_logging_start();
 	// Initialize the connection:
 	conn_ = helium_alloc();
@@ -64,12 +60,27 @@ Helium::Helium() {
 
 }
 
+/**
+ * Opens the connection. Right now hardcodes an ipv4 proxy, but
+ * this should be made optional before release.
+ */
+int Helium::open() {
+		return helium_open(conn_, "r01.sjc.helium.io", incoming_msg);
+}
+
+/**
+ * Close the connection and frees up resources.
+ */
 void Helium::close() {
 
 	helium_close(conn_);
  	helium_free(conn_);	
 }
 
+/**
+ * Subscribe to a modem: needs the MAC address and public token
+ * for the call to be successful.
+ */
 int Helium::subscribe(uint64_t mac, char* base64) {
 
 	helium_token_t token;
@@ -79,10 +90,71 @@ int Helium::subscribe(uint64_t mac, char* base64) {
 
 }
 
+/**
+ * Unsubscribe from messages from a moden. Only the MAC address
+ * is needed there.
+ */
 int Helium::unsubscribe(uint64_t mac) {
 
 	return helium_unsubscribe(conn_, mac);
 }
+
+/**
+ * This method is called whenever a message arrives from a modem.
+ * It generates a Node callback that is meant to be caught by the Javascript
+ * layer of this addon, to dispatch to listeners - the philosophy is that it is
+ * considered as best practice to do as little as necessary in C++ and let the JS
+ * layer handle as much as possible.
+ */
+void Helium::incoming_msg(const helium_connection_t *conn, uint64_t mac, char * const message, size_t count)
+{
+	std::cout << "Step 0\n";
+	NanScope();
+
+	std::cout << "Step 1\n";
+    Local<Value> args[2];
+	std::cout << "Step 2\n";
+	args[0] = *Undefined();
+  	args[1] = *Undefined();
+
+    printf("Connection %p received message from device %" PRIx64 ".\n", (void *)conn, mac);
+    hexdump(message,count);
+
+	convertMessageToJS(message, args);
+	args[0] = String::New("MAC");
+
+    node::MakeCallback(constructor, "on", 2, args);
+
+}
+
+/**
+ * Converts a Helium message (a char*) into a proper JS "Buffer" object in Node.
+ * See http://www.samcday.com.au/blog/2011/03/03/creating-a-proper-buffer-in-a-node-c-addon/
+ *
+ */
+void Helium::convertMessageToJS(char* msg, v8::Local<v8::Value> args[]) {
+
+	int length = strlen(msg);
+
+	// Allocate binary buffer:
+	node::Buffer *slowBuffer = node::Buffer::New(length);
+	memcpy(node::Buffer::Data(slowBuffer), msg, length);
+
+    //Get "fast" node Buffer constructor
+    Local<Function> nodeBufConstructor = Local<Function>::Cast(
+      Context::GetCurrent()->Global()->Get(String::New("Buffer") )
+    );
+    //Construct a new Buffer
+    // First argument is the JS object Handle for the SlowBuffer.
+	// Second arg is the length of the SlowBuffer.
+	// Third arg is the offset in the SlowBuffer we want the "Fast"Buffer to start at.
+    Handle<Value> nodeBufferArgs[3] = { slowBuffer->handle_,
+    									Integer::New(length),
+    									Integer::New(0) };
+    Local<Object> buf = nodeBufConstructor->NewInstance(3, nodeBufferArgs);
+    args[1] = buf;
+}
+
 
 
 Helium::~Helium() {
@@ -137,9 +209,10 @@ NAN_METHOD(Helium::Open) {
 	std::cout << "Helium Open\n";
 
 	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
-	helium_open(obj->conn_, "r01.sjc.helium.io", my_callback);
 
-	NanReturnValue(Number::New(42));
+	int err = obj->open();
+
+	NanReturnValue(Number::New(err));
 
 }
 
