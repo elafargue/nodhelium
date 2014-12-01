@@ -111,17 +111,21 @@ int Helium::unsubscribe(uint64_t mac) {
  */
 void Helium::incoming_msg(const helium_connection_t *conn, uint64_t mac, char * const message, size_t count)
 {
-	std::cout << "Step 0\n";
-
-	struct helium_message req;
 
 	uv_work_t* uv = new uv_work_t;
 
   	Helium *self = const_cast<Helium*>(static_cast<const Helium*>(helium_get_context(conn)));
 
-	req.mac = mac;
-	req.helium = self;
-	uv->data = &req;
+  	// We need to make a copy of the message for use down the line:
+	std::cout << "Preparing message\n";
+	struct helium_message* req = (struct helium_message *)malloc(sizeof(*req) + sizeof(req->message)*count);
+
+	req->mac = mac;
+	req->helium = self;
+	req->count = count;
+	// memcpy(req->message, message, count);
+	std::cout << "Preparing message (2)\n";
+	uv->data = req;
 
 	// This will call HandleMessageDone in the nodejs thread, where we ca create V8 objects
 	int r = uv_queue_work(uv_default_loop(), uv, UV_NOP, (uv_after_work_cb)HandleMessageDone);
@@ -129,28 +133,36 @@ void Helium::incoming_msg(const helium_connection_t *conn, uint64_t mac, char * 
     	std::cout << "error while queuing helium message callback";
     	delete uv;
   	}
-  	std::cout << "Step 1\n";
-
     printf("Connection %p received message from device %" PRIx64 ".\n", (void *)conn, mac);
     hexdump(message,count);
 
 }
 
 /**
- * This never gets called!!! Why ???
+ * Callback after incoming_msg, but this one is within the NodeJS thread context, so we have
+ * access to our scope, V8 objects, and so on.
  */
 void Helium::HandleMessageDone(uv_work_t *req) {
 
+	helium_message* msg = static_cast<helium_message* >(req->data);
+
 	NanScope();
 
-	std::cout << "********* *********** ************ Step 2\n";
-	std::cout << "********* *********** ************ Step 2\n";
-	std::cout << "********* *********** ************ Step 2\n";
+	std::cout << "Preparing javascript callback\n";
+	msg->helium->sendCallback(msg->mac, NULL);
 
-	//	convertMessageToJS(message, args);
-	//	args[0] = String::New("MAC");
+  	free(msg);
+}
 
-  	//  node::MakeCallback(constructor, "on", 2, args);
+void Helium::sendCallback(uint64_t mac, char* message) {
+	Local<Value> args[2] = { String::New("message"), *Undefined()};
+
+	std::cout << "Preparing javascript callback (2)\n";
+	//convertMessageToJS(msg->message, args);
+	args[1] = String::New("MAC");
+
+  	node::MakeCallback(self, "emit", 2, args);
+
 }
 
 /**
@@ -220,6 +232,9 @@ NAN_METHOD(Helium::New) {
 	try {
 		Helium* obj = new Helium();
 	    obj->Wrap(args.This());
+
+		obj->self = Persistent<Object>::New(args.This());
+
 	    return scope.Close(args.This());
 
 	} catch (const JSException& e) {

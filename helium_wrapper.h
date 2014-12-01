@@ -66,6 +66,8 @@ protected:
 	static void incoming_msg(const helium_connection_t *conn, uint64_t mac, char * const message, size_t count);
 	static void HandleMessageDone(uv_work_t *req);
 
+	void sendCallback(uint64_t mac, char* message);
+
 	// Convert a message into a Node Buffer object
 	static void convertMessageToJS(char* message, v8::Local<v8::Value> argv[]);
 
@@ -89,6 +91,7 @@ private:
 	// Our internal variables
 	// ///////
 	helium_connection_t *conn_;
+	v8::Handle<v8::Object> self;
 
 	/**
      * Passes a WiiMote event from libcwiid's thread to the Nodejs's thread
@@ -96,6 +99,8 @@ private:
     struct helium_message {
       Helium* helium;
       uint64_t mac;
+      size_t count;
+      char* message;
     };
 
 };
