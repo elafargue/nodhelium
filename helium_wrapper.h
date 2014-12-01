@@ -5,6 +5,7 @@
 #include <stdlib.h>
 extern "C" {
 	#include <helium.h>
+	#include "helium_logging.h"
 }
 
 #include <stdint.h>
@@ -42,10 +43,12 @@ public:
 	static void Init(v8::Handle<v8::Object> exports);
 
 
+	int subscribe(uint64_t mac, char* base64);
+	int unsubscribe(uint64_t mac);
 	void close();
 
 private:
-	explicit Helium(uint64_t address, char* token);
+	explicit Helium();
 	~Helium();
 
 	/// ///////
@@ -66,8 +69,6 @@ private:
 	// ///////
 	// Our internal variables
 	// ///////
-	uint64_t address_;
-	helium_token_t token_;
 	helium_connection_t *conn_;
 
 };

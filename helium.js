@@ -1,9 +1,16 @@
 var helium = require('./build/Release/helium');
 
 // Will work
-var obj = new helium.Helium(0x00212effff005979, "/jLFloewvLYX9Z9O8uu73w==");
+var obj = new helium.Helium();
 
 obj.open();
+
+var token = "/jLFloewvLYX9Z9O8uu73w==";
+var mac = 0x00212effff005979;
+
+obj.subscribe(mac, token);
+
+obj.unsubscribe(mac);
 
 obj.close();
 
