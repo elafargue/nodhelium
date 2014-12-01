@@ -15,6 +15,8 @@
 using namespace v8;
 using node::ObjectWrap;
 
+void UV_NOP(uv_work_t* req) { /* No operation */ }
+
 // http://stackoverflow.com/questions/10507323/shortest-way-one-liner-to-get-a-default-argument-out-of-a-v8-function
 char *get(v8::Local<v8::Value> value, const char *fallback = "") {
     if (value->IsString()) {
@@ -55,6 +57,7 @@ Helium::Helium() {
 	helium_logging_start();
 	// Initialize the connection:
 	conn_ = helium_alloc();
+	helium_set_context(conn_, this);
 	
 	std::cout << "Created Helium object\n";
 
@@ -109,22 +112,45 @@ int Helium::unsubscribe(uint64_t mac) {
 void Helium::incoming_msg(const helium_connection_t *conn, uint64_t mac, char * const message, size_t count)
 {
 	std::cout << "Step 0\n";
-	NanScope();
 
-	std::cout << "Step 1\n";
-    Local<Value> args[2];
-	std::cout << "Step 2\n";
-	args[0] = *Undefined();
-  	args[1] = *Undefined();
+	struct helium_message req;
+
+	uv_work_t* uv = new uv_work_t;
+
+  	Helium *self = const_cast<Helium*>(static_cast<const Helium*>(helium_get_context(conn)));
+
+	req.mac = mac;
+	req.helium = self;
+	uv->data = &req;
+
+	// This will call HandleMessageDone in the nodejs thread, where we ca create V8 objects
+	int r = uv_queue_work(uv_default_loop(), uv, UV_NOP, (uv_after_work_cb)HandleMessageDone);
+	if (r != 0) {
+    	std::cout << "error while queuing helium message callback";
+    	delete uv;
+  	}
+  	std::cout << "Step 1\n";
 
     printf("Connection %p received message from device %" PRIx64 ".\n", (void *)conn, mac);
     hexdump(message,count);
 
-	convertMessageToJS(message, args);
-	args[0] = String::New("MAC");
+}
 
-    node::MakeCallback(constructor, "on", 2, args);
+/**
+ * This never gets called!!! Why ???
+ */
+void Helium::HandleMessageDone(uv_work_t *req) {
 
+	NanScope();
+
+	std::cout << "********* *********** ************ Step 2\n";
+	std::cout << "********* *********** ************ Step 2\n";
+	std::cout << "********* *********** ************ Step 2\n";
+
+	//	convertMessageToJS(message, args);
+	//	args[0] = String::New("MAC");
+
+  	//  node::MakeCallback(constructor, "on", 2, args);
 }
 
 /**
@@ -163,7 +189,7 @@ Helium::~Helium() {
 
 void Helium::Init(Handle<Object> target) {
 
-	NanScope();
+	HandleScope scope;
 
   // Prepare constructor template
   Local<FunctionTemplate> tpl = NanNew<FunctionTemplate>(Helium::New);
@@ -192,11 +218,9 @@ NAN_METHOD(Helium::New) {
 	HandleScope scope;
 
 	try {
-		Helium* obj;
-
-		obj = new Helium();
+		Helium* obj = new Helium();
 	    obj->Wrap(args.This());
-	    return args.This();
+	    return scope.Close(args.This());
 
 	} catch (const JSException& e) {
       return e.asV8Exception();
