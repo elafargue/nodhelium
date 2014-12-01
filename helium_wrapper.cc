@@ -20,6 +20,8 @@ char *get(v8::Local<v8::Value> value, const char *fallback = "") {
     return str;
 }
 
+Persistent<Function> Helium::constructor;
+
 
 Helium::Helium(uint64_t address, char* base64) {
 
@@ -43,9 +45,28 @@ Helium::~Helium() {
 	close();
 }
 
+void Helium::Init(Handle<Object> target) {
+
+	NanScope();
+
+  // Prepare constructor template
+  Local<FunctionTemplate> tpl = NanNew<FunctionTemplate>(Helium::New);
+  tpl->SetClassName(String::New("Helium"));
+
+  // How many methods our class has
+  tpl->InstanceTemplate()->SetInternalFieldCount(2);
+
+  // Prototypes
+  NODE_SET_PROTOTYPE_METHOD(tpl, "open", Open);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "close", Close);
+
+  NanAssignPersistent(constructor, tpl->GetFunction());
+  target->Set(NanNew("Helium"), tpl->GetFunction());
+
+}
 
 // First arg is address , second arg is token
-Handle<Value>  Helium::New(const Arguments& args) {
+NAN_METHOD(Helium::New) {
 	if (!args.IsConstructCall()) {
 		return ThrowException(String::New("Helium function can only be used as a constructor"));
 	}
@@ -71,38 +92,19 @@ Handle<Value>  Helium::New(const Arguments& args) {
   	}
 }
 
-
-void Helium::Init(Handle<Object> target) {
-
-  // Prepare constructor template
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(Helium::New);
-  tpl->SetClassName(String::New("Helium"));
-
-  // How many methods our class has
-  tpl->InstanceTemplate()->SetInternalFieldCount(2);
-
-  // Prototypes
-  NODE_SET_PROTOTYPE_METHOD(tpl, "open", Open);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "close", Close);
-
-  target->Set(String::NewSymbol("Helium"), tpl->GetFunction());
-
-}
-
-
-Handle<Value> Helium::Open(const v8::Arguments& args) {
-	HandleScope scope;
+NAN_METHOD(Helium::Open) {
+	NanScope();
 
 	std::cout << "Helium Open\n";
 
-	return scope.Close(Number::New(42));
+	NanReturnValue(Number::New(42));
 
 }
 
-Handle<Value> Helium::Close(const v8::Arguments& args) {
-	HandleScope scope;
+NAN_METHOD(Helium::Close) {
+	NanScope();
 
 	std::cout << "Helium Close\n";
 
-	return scope.Close(Number::New(43));
+	NanReturnValue(Number::New(43));
 }

@@ -1,4 +1,4 @@
-#include <node.h>
+#include <nan.h>
 #include "helium_wrapper.h"
 
 using namespace v8;

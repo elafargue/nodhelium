@@ -13,7 +13,7 @@ extern "C" {
 #include <string>
 
 
-#include <node.h>
+#include <nan.h>
 
 // //////////////////////////////////////////////////////////////////
 // Throwable error class that can be converted to a JavaScript
@@ -52,14 +52,14 @@ private:
 	// The Node library calls:
 	/// ///////
 
-	static v8::Handle<v8::Value> New(const v8::Arguments& args);
+	static NAN_METHOD(New);
 
 	/* Open/close a new Helium connection - passing ipv4 proxy as option */
-	static v8::Handle<v8::Value> Open(const v8::Arguments& args);
-	static v8::Handle<v8::Value> Close(const v8::Arguments& args);
+	static NAN_METHOD(Open);
+	static NAN_METHOD(Close);
     /* Subscribe to updates from an object (passes a callback) */
-    static v8::Handle<v8::Value> Subscribe(const v8::Arguments& args);
-    static v8::Handle<v8::Value> Unsubscribe(const v8::Arguments& args);
+    static NAN_METHOD(Subscribe);
+    static NAN_METHOD(Unsubscribe);
 
 	static v8::Persistent<v8::Function> constructor;
 
