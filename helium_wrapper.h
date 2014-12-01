@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2014 Edouard Lafargue.
+ *
+ * This software may be modified and distributed under the terms
+ * of the MIT license.  See the LICENSE file for details.
+ */ 
+
 #ifndef HEL_WRAPPER_H
 #define HEL_WRAPPER_H
 
@@ -18,7 +25,8 @@ extern "C" {
 
 // //////////////////////////////////////////////////////////////////
 // Throwable error class that can be converted to a JavaScript
-// exception
+// exception, borrowed from https://github.com/node-hid/node-hid
+// which is MIT licensed as well.
 // //////////////////////////////////////////////////////////////////
 class JSException
 {
@@ -31,30 +39,6 @@ public:
 protected:
   std::string _message;
 };
-
-/**
- * Need to implement a simple callback system:
-
-  // in Init() 
-  Persistent<Object> context_obj = Persistent<Object>::New(Object::New()); 
-  target->Set(String::New("context"), context_obj); 
-
-  // elsewhere in your code 
-  Local<Value> args[] = { String::New("ping") }; 
-  node::MakeCallback(context_obj, "on", ARRAY_SIZE(args), args); 
-
-And the JS shim: 
-
-  var bindings = require('./bindings'); // the .node file 
-  bindings.context.on = function(name) { 
-    console.log(name); // prints "ping" 
-    // now invoke the user's callbacks 
-  }; 
-
-Hope that helps. 
-
-*/
-
 
 
 // //////////////////////////////////////////////////////////////////
