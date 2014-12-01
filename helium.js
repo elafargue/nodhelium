@@ -6,9 +6,16 @@ var obj = new helium.Helium();
 obj.open();
 
 var token = "/jLFloewvLYX9Z9O8uu73w==";
-var mac = 0x00212effff005979;
+// Javascript cannot handle 64bit numbers
+var mac_h = 0x00212eff
+var mac_l = 0xff005979;
 
-obj.subscribe(mac, token);
+obj.subscribe(mac_h, mac_l, token);
+
+while(1) {
+
+}
+
 
 obj.unsubscribe(mac);
 

@@ -2,7 +2,12 @@
   "name": "helium",
   "version": "0.0.0",
   "description": "Node.js Helium API wrapper",
-  "main": "helium.js",
+  "author": {
+    "name": "Edouard Lafargue",
+    "email": "ed@lafargue.name",
+    "url": "http://www.aerodynes.org/"
+  },
+  "main": "./helium.js",
   "private": true,
   "gypfile": true,
   "dependencies": {

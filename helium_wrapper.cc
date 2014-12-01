@@ -151,16 +151,20 @@ NAN_METHOD(Helium::Close) {
 NAN_METHOD(Helium::Subscribe) {
 	NanScope();
 
-	if (args.Length() < 1 || args.Length() > 2) {
-		return ThrowException(String::New("Helium subscribe requires two arguments (MAC and token)"));
+	if (args.Length() != 3) {
+		return ThrowException(String::New("Helium subscribe requires 3 arguments (MAC H/L and token)"));
 	}
 
 	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
 
 	// We expect Address as 1st argument (64bit uint)
 	// and token as string for second argument.
-	uint64_t mac = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
-	char* base64 = get(args[1], "0");
+	uint64_t mac_h = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
+	uint64_t mac_l = args[1]->IsUndefined() ? 0 : args[1]->NumberValue();
+	uint64_t mac = (mac_h << 32) + mac_l;
+	char* base64 = get(args[2], "0");
+
+	printf("MAC: %" PRIx64 ", Token: %s \n", mac, base64);
 
 	int err = obj->subscribe(mac, base64);
 
