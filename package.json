@@ -1,0 +1,11 @@
+{
+  "name": "helium",
+  "version": "0.0.0",
+  "description": "Node.js Helium API wrapper",
+  "main": "helium.js",
+  "private": true,
+  "gypfile": true,
+  "dependencies": {
+    "bindings": "~1.2.1"
+  }
+}
