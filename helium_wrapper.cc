@@ -54,12 +54,10 @@ Persistent<Function> Helium::constructor;
  * using libhelium
  */
 Helium::Helium() {
-	helium_logging_start();
+	// helium_logging_start();
 	// Initialize the connection:
 	conn_ = helium_alloc();
 	helium_set_context(conn_, this);
-	
-	std::cout << "Created Helium object\n";
 
 }
 
@@ -68,7 +66,7 @@ Helium::Helium() {
  * this should be made optional before release.
  */
 int Helium::open() {
-		return helium_open(conn_, "r01.sjc.helium.io", incoming_msg);
+	return helium_open(conn_, "r01.sjc.helium.io", incoming_msg);
 }
 
 /**
@@ -116,15 +114,13 @@ void Helium::incoming_msg(const helium_connection_t *conn, uint64_t mac, char * 
 
   	Helium *self = const_cast<Helium*>(static_cast<const Helium*>(helium_get_context(conn)));
 
-  	// We need to make a copy of the message for use down the line:
-	std::cout << "Preparing message\n";
+  	// We need to make a copy of the message for our use down the line:
 	struct helium_message* req = (struct helium_message *)malloc(sizeof(*req));
 	req->mac = mac;
 	req->helium = self;
 	req->count = count;
 	req->message = (char *)malloc(count);
 	memcpy(req->message, message, count);
-	std::cout << "Preparing message (2)\n";
 
 	uv->data = req;
 
@@ -142,23 +138,17 @@ void Helium::incoming_msg(const helium_connection_t *conn, uint64_t mac, char * 
  * access to our scope, V8 objects, and so on.
  */
 void Helium::HandleMessageDone(uv_work_t *req) {
-
 	helium_message* msg = static_cast<helium_message* >(req->data);
-
 	NanScope();
-
-	std::cout << "Preparing javascript callback\n";
-
 	msg->helium->sendCallback(msg->mac, msg->message, msg->count);
-
+	// Don't forget to free our memory!
 	free(msg->message);
   	free(msg);
 }
 
 void Helium::sendCallback(uint64_t mac, char * const message, size_t count) {
-	std::cout << "Preparing javascript callback (2)\n";
-    printf("Received message from device %" PRIx64 ".\n", mac);
-    hexdump(message, count);
+    //printf("Received message from device %" PRIx64 ".\n", mac);
+    //hexdump(message, count);
 
     // Print the MAC into a hex string
     char macstring[17];
@@ -258,12 +248,8 @@ NAN_METHOD(Helium::New) {
 NAN_METHOD(Helium::Open) {
 	NanScope();
 
-	std::cout << "Helium Open\n";
-
 	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
-
 	int err = obj->open();
-
 	NanReturnValue(Number::New(err));
 
 }
@@ -271,10 +257,8 @@ NAN_METHOD(Helium::Open) {
 NAN_METHOD(Helium::Close) {
 	NanScope();
 
-	std::cout << "Helium Close\n";
 	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
 	obj->close();
-
 	NanReturnValue(Number::New(43));
 }
 
@@ -295,10 +279,7 @@ NAN_METHOD(Helium::Subscribe) {
 	uint64_t mac = (mac_h << 32) + mac_l;
 	char* base64 = get(args[2], "0");
 
-	printf("MAC: %" PRIx64 ", Token: %s \n", mac, base64);
-
 	int err = obj->subscribe(mac, base64);
-
 	NanReturnValue(Number::New(err));
 }
 

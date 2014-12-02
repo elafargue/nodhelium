@@ -66,10 +66,10 @@ protected:
 	static void incoming_msg(const helium_connection_t *conn, uint64_t mac, char * const message, size_t count);
 	static void HandleMessageDone(uv_work_t *req);
 
-	void sendCallback(uint64_t mac, char* message);
+	void sendCallback(uint64_t mac, char * const message, size_t count);
 
 	// Convert a message into a Node Buffer object
-	static void convertMessageToJS(char* message, v8::Local<v8::Value> argv[]);
+	static void convertMessageToJS(char* message, size_t count,  v8::Local<v8::Value> argv[]);
 
 	/// ///////
 	// The Node library calls:
