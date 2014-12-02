@@ -10,7 +10,7 @@
 #include "helium_wrapper.h"
 
 #include <iostream>
-#include <vector>
+#include <stdio.h>
 
 using namespace v8;
 using node::ObjectWrap;
@@ -118,13 +118,14 @@ void Helium::incoming_msg(const helium_connection_t *conn, uint64_t mac, char * 
 
   	// We need to make a copy of the message for use down the line:
 	std::cout << "Preparing message\n";
-	struct helium_message* req = (struct helium_message *)malloc(sizeof(*req) + sizeof(req->message)*count);
-
+	struct helium_message* req = (struct helium_message *)malloc(sizeof(*req));
 	req->mac = mac;
 	req->helium = self;
 	req->count = count;
-	// memcpy(req->message, message, count);
+	req->message = (char *)malloc(count);
+	memcpy(req->message, message, count);
 	std::cout << "Preparing message (2)\n";
+
 	uv->data = req;
 
 	// This will call HandleMessageDone in the nodejs thread, where we ca create V8 objects
@@ -133,8 +134,6 @@ void Helium::incoming_msg(const helium_connection_t *conn, uint64_t mac, char * 
     	std::cout << "error while queuing helium message callback";
     	delete uv;
   	}
-    printf("Connection %p received message from device %" PRIx64 ".\n", (void *)conn, mac);
-    hexdump(message,count);
 
 }
 
@@ -149,17 +148,33 @@ void Helium::HandleMessageDone(uv_work_t *req) {
 	NanScope();
 
 	std::cout << "Preparing javascript callback\n";
-	msg->helium->sendCallback(msg->mac, NULL);
 
+	msg->helium->sendCallback(msg->mac, msg->message, msg->count);
+
+	free(msg->message);
   	free(msg);
 }
 
-void Helium::sendCallback(uint64_t mac, char* message) {
+void Helium::sendCallback(uint64_t mac, char * const message, size_t count) {
+	std::cout << "Preparing javascript callback (2)\n";
+    printf("Received message from device %" PRIx64 ".\n", mac);
+    hexdump(message, count);
+
+    // Print the MAC into a hex string
+    char macstring[17];
+    sprintf(macstring, "%016"PRIx64, mac);
+
+	// First argument is the event name ("message")
 	Local<Value> args[2] = { String::New("message"), *Undefined()};
 
-	std::cout << "Preparing javascript callback (2)\n";
-	//convertMessageToJS(msg->message, args);
-	args[1] = String::New("MAC");
+	// Create a Javascript object like this:
+	// { mac: "HEX String", message: Buffer}
+	Local<Object> resp = Object::New();
+	resp->Set(String::NewSymbol("mac"), String::New(macstring));
+	Local<Value> buf[1];
+	convertMessageToJS(message, count, buf);
+	resp->Set(String::NewSymbol("message"), buf[0]);
+	args[1] = resp;
 
   	node::MakeCallback(self, "emit", 2, args);
 
@@ -170,9 +185,7 @@ void Helium::sendCallback(uint64_t mac, char* message) {
  * See http://www.samcday.com.au/blog/2011/03/03/creating-a-proper-buffer-in-a-node-c-addon/
  *
  */
-void Helium::convertMessageToJS(char* msg, v8::Local<v8::Value> args[]) {
-
-	int length = strlen(msg);
+void Helium::convertMessageToJS(char* msg, size_t length, v8::Local<v8::Value> arg[]) {
 
 	// Allocate binary buffer:
 	node::Buffer *slowBuffer = node::Buffer::New(length);
@@ -190,7 +203,7 @@ void Helium::convertMessageToJS(char* msg, v8::Local<v8::Value> args[]) {
     									Integer::New(length),
     									Integer::New(0) };
     Local<Object> buf = nodeBufConstructor->NewInstance(3, nodeBufferArgs);
-    args[1] = buf;
+    arg[0] = buf;
 }
 
 
