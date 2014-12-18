@@ -21,12 +21,12 @@ obj = new helium.Helium();
 
 obj.open();
 
-var token = "[replace with token]";
+var token = "PbOkU4Jo+NObbPe27MJGNQ==";
 // Javascript cannot handle 64bit numbers, so we
 // split the MAC address in two 32bit numbers.
 // Example for 0x0011223344556677 as the full MAC:
-var mac_h = 0x00112233; // The MSB
-var mac_l = 0x44556677; // LSB
+var mac_h = 0x000000ff; // The MSB
+var mac_l = 0xfff00002; // LSB
 
 obj.subscribe(mac_h, mac_l, token);
 

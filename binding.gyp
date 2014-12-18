@@ -15,7 +15,17 @@
             'GCC_ENABLE_CPP_EXCEPTIONS': 'YES'
           }
         }
-	]]
+        ],
+        [ 'OS=="linux"', {
+          'actions': [{
+            'action_name': 'mangle libuv',
+            'inputs': [],
+            'outputs': ['libnuv.a', 'libhelium.a'],
+            'action': ['bash', 'mangle.sh']
+          }],
+          'libraries=': ['../libhelium.a', '../libnuv.a']
+        }]
+        ]
     }
   ]
 }
