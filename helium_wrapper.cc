@@ -100,6 +100,15 @@ int Helium::unsubscribe(uint64_t mac) {
 	return helium_unsubscribe(conn_, mac);
 }
 
+int Helium::send(uint64_t mac, char* base64, char *message, size_t msg_len) {
+
+	helium_token_t token;
+	helium_base64_token_decode((const unsigned char *)base64, strlen(base64), token);
+
+	return helium_send(conn_, mac, token, (unsigned char*)message, msg_len);
+
+}
+
 /**
  * This method is called whenever a message arrives from a modem.
  * It generates a Node callback that is meant to be caught by the Javascript
@@ -218,6 +227,7 @@ void Helium::Init(Handle<Object> target) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", Close);
   NODE_SET_PROTOTYPE_METHOD(tpl, "subscribe", Subscribe);
   NODE_SET_PROTOTYPE_METHOD(tpl, "unsubscribe", Unsubscribe);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "send", Send);
 
   NanAssignPersistent(constructor, tpl->GetFunction());
   target->Set(NanNew("Helium"), tpl->GetFunction());
@@ -298,3 +308,31 @@ NAN_METHOD(Helium::Unsubscribe) {
 	NanReturnValue(Number::New(err));
 
 }
+
+NAN_METHOD(Helium::Send) {
+	NanScope();
+
+	if (args.Length() != 4) {
+		return ThrowException(String::New("Helium subscribe requires  arguments (MAC H/L, token and message)"));
+	}
+
+	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
+
+	// We expect Address as 1st argument (64bit uint)
+	// and token as string for second argument.
+	uint64_t mac_h = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
+	uint64_t mac_l = args[1]->IsUndefined() ? 0 : args[1]->NumberValue();
+	uint64_t mac = (mac_h << 32) + mac_l;
+	char* base64 = get(args[2], "0");
+
+	if (!args[3]->IsString()) {
+		return ThrowException(String::New("Message was not a string"));
+	}
+	v8::String::AsciiValue string(args[3]);
+	char *str = (char *) malloc(string.length() + 1);
+	strcpy(str, *string);
+
+	int err = obj->send(mac, base64, str, string.length());
+	NanReturnValue(Number::New(err));
+}
+

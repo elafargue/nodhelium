@@ -55,6 +55,7 @@ public:
 
 	int subscribe(uint64_t mac, char* base64);
 	int unsubscribe(uint64_t mac);
+	int send(uint64_t mac, char* base64, char *message, size_t msg_len);
 	int open();
 	void close();
 
@@ -83,6 +84,7 @@ protected:
     /* Subscribe to updates from an object (passes a callback) */
     static NAN_METHOD(Subscribe);
     static NAN_METHOD(Unsubscribe);
+    static NAN_METHOD(Send);
 
 	static v8::Persistent<v8::Function> constructor;
 
