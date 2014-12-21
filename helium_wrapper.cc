@@ -276,18 +276,20 @@ NAN_METHOD(Helium::Close) {
 NAN_METHOD(Helium::Subscribe) {
 	NanScope();
 
-	if (args.Length() != 3) {
-		return ThrowException(String::New("Helium subscribe requires 3 arguments (MAC H/L and token)"));
+	if (args.Length() != 2) {
+		return ThrowException(String::New("Helium subscribe requires 2 arguments (MAC and token)"));
 	}
 
 	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
 
-	// We expect Address as 1st argument (64bit uint)
-	// and token as string for second argument.
-	uint64_t mac_h = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
-	uint64_t mac_l = args[1]->IsUndefined() ? 0 : args[1]->NumberValue();
-	uint64_t mac = (mac_h << 32) + mac_l;
-	char* base64 = get(args[2], "0");
+	if (!args[0]->IsString()) {
+		return ThrowException(String::New("MAC was not a string"));
+	}
+	v8::String::AsciiValue string(args[0]);
+
+	// TODO check endptr
+	uint64_t mac = (uint64_t)strtoll(*string, NULL, 16);
+	char* base64 = get(args[1], "0");
 
 	int err = obj->subscribe(mac, base64);
 	NanReturnValue(Number::New(err));
@@ -301,9 +303,16 @@ NAN_METHOD(Helium::Unsubscribe) {
 	}
 
 	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
-	uint64_t mac = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
+	if (!args[0]->IsString()) {
+		return ThrowException(String::New("MAC was not a string"));
+	}
+	v8::String::AsciiValue string(args[0]);
+
+	// TODO check endptr
+	uint64_t mac = (uint64_t)strtoll(*string, NULL, 16);
+
 	int err = obj->unsubscribe(mac);
-    helium_dbg("unsubscribe result %d\n", err);
+	helium_dbg("unsubscribe result %d\n", err);
 
 	NanReturnValue(Number::New(err));
 
@@ -312,23 +321,26 @@ NAN_METHOD(Helium::Unsubscribe) {
 NAN_METHOD(Helium::Send) {
 	NanScope();
 
-	if (args.Length() != 4) {
-		return ThrowException(String::New("Helium subscribe requires  arguments (MAC H/L, token and message)"));
+	if (args.Length() != 3) {
+		return ThrowException(String::New("Helium subscribe requires 3 arguments (MAC, token and message)"));
 	}
 
 	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
 
-	// We expect Address as 1st argument (64bit uint)
-	// and token as string for second argument.
-	uint64_t mac_h = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
-	uint64_t mac_l = args[1]->IsUndefined() ? 0 : args[1]->NumberValue();
-	uint64_t mac = (mac_h << 32) + mac_l;
-	char* base64 = get(args[2], "0");
+	if (!args[0]->IsString()) {
+		return ThrowException(String::New("MAC was not a string"));
+	}
+	v8::String::AsciiValue macstring(args[0]);
 
-	if (!args[3]->IsString()) {
+	// TODO check endptr
+	uint64_t mac = (uint64_t)strtoll(*macstring, NULL, 16);
+
+	char* base64 = get(args[1], "0");
+
+	if (!args[2]->IsString()) {
 		return ThrowException(String::New("Message was not a string"));
 	}
-	v8::String::AsciiValue string(args[3]);
+	v8::String::AsciiValue string(args[2]);
 	char *str = (char *) malloc(string.length() + 1);
 	strcpy(str, *string);
 
