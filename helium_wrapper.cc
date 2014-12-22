@@ -292,6 +292,7 @@ NAN_METHOD(Helium::Subscribe) {
 	char* base64 = get(args[1], "0");
 
 	int err = obj->subscribe(mac, base64);
+	free(base64);
 	NanReturnValue(Number::New(err));
 }
 
@@ -340,11 +341,10 @@ NAN_METHOD(Helium::Send) {
 	if (!args[2]->IsString()) {
 		return ThrowException(String::New("Message was not a string"));
 	}
-	v8::String::AsciiValue string(args[2]);
-	char *str = (char *) malloc(string.length() + 1);
-	strcpy(str, *string);
+	v8::String::Utf8Value string(args[2]);
 
-	int err = obj->send(mac, base64, str, string.length());
+	int err = obj->send(mac, base64, *string, string.length());
+	free(base64);
 	NanReturnValue(Number::New(err));
 }
 
