@@ -94,6 +94,7 @@ private:
 	// ///////
 	helium_connection_t *conn_;
 	v8::Handle<v8::Object> self;
+	int is_open;
 
 	/**
      * Passes a WiiMote event from libcwiid's thread to the Nodejs's thread

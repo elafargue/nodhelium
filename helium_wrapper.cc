@@ -17,19 +17,6 @@ using node::ObjectWrap;
 
 void UV_NOP(uv_work_t* req) { /* No operation */ }
 
-// http://stackoverflow.com/questions/10507323/shortest-way-one-liner-to-get-a-default-argument-out-of-a-v8-function
-char *get(v8::Local<v8::Value> value, const char *fallback = "") {
-    if (value->IsString()) {
-        v8::String::AsciiValue string(value);
-        char *str = (char *) malloc(string.length() + 1);
-        strcpy(str, *string);
-        return str;
-    }
-    char *str = (char *) malloc(strlen(fallback) + 1);
-    strcpy(str, fallback);
-    return str;
-}
-
  void hexdump(char *buffer, size_t length)
  {
   int i;
@@ -57,6 +44,7 @@ Helium::Helium() {
 	// helium_logging_start();
 	// Initialize the connection:
 	conn_ = helium_alloc();
+	this->is_open = 0;
 	helium_set_context(conn_, this);
 
 }
@@ -152,7 +140,8 @@ void Helium::HandleMessageDone(uv_work_t *req) {
 	msg->helium->sendCallback(msg->mac, msg->message, msg->count);
 	// Don't forget to free our memory!
 	free(msg->message);
-  	free(msg);
+	free(msg);
+	delete req;
 }
 
 void Helium::sendCallback(uint64_t mac, char * const message, size_t count) {
@@ -259,7 +248,14 @@ NAN_METHOD(Helium::Open) {
 	NanScope();
 
 	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
+	if (obj->is_open == 1) {
+		return ThrowException(String::New("Helium connection is already open"));
+	}
+
 	int err = obj->open();
+	if (err == 0) {
+		obj->is_open = 1;
+	}
 	NanReturnValue(Number::New(err));
 
 }
@@ -268,7 +264,11 @@ NAN_METHOD(Helium::Close) {
 	NanScope();
 
 	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
+	if (obj->is_open != 1) {
+		return ThrowException(String::New("Helium connection was not opened"));
+	}
 	obj->close();
+	obj->is_open = 0;
 	NanReturnValue(Number::New(43));
 }
 
@@ -282,17 +282,24 @@ NAN_METHOD(Helium::Subscribe) {
 
 	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
 
+	if (obj->is_open != 1) {
+		return ThrowException(String::New("Helium connection was not opened"));
+	}
+
 	if (!args[0]->IsString()) {
 		return ThrowException(String::New("MAC was not a string"));
 	}
 	v8::String::AsciiValue string(args[0]);
 
+	if (!args[1]->IsString()) {
+		return ThrowException(String::New("Token was not a string"));
+	}
+	v8::String::AsciiValue base64(args[1]);
+
 	// TODO check endptr
 	uint64_t mac = (uint64_t)strtoll(*string, NULL, 16);
-	char* base64 = get(args[1], "0");
 
-	int err = obj->subscribe(mac, base64);
-	free(base64);
+	int err = obj->subscribe(mac, *base64);
 	NanReturnValue(Number::New(err));
 }
 
@@ -304,6 +311,11 @@ NAN_METHOD(Helium::Unsubscribe) {
 	}
 
 	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
+
+	if (obj->is_open != 1) {
+		return ThrowException(String::New("Helium connection was not opened"));
+	}
+
 	if (!args[0]->IsString()) {
 		return ThrowException(String::New("MAC was not a string"));
 	}
@@ -328,6 +340,10 @@ NAN_METHOD(Helium::Send) {
 
 	Helium* obj = ObjectWrap::Unwrap<Helium>(args.Holder());
 
+	if (obj->is_open != 1) {
+		return ThrowException(String::New("Helium connection was not opened"));
+	}
+
 	if (!args[0]->IsString()) {
 		return ThrowException(String::New("MAC was not a string"));
 	}
@@ -336,15 +352,17 @@ NAN_METHOD(Helium::Send) {
 	// TODO check endptr
 	uint64_t mac = (uint64_t)strtoll(*macstring, NULL, 16);
 
-	char* base64 = get(args[1], "0");
+	if (!args[1]->IsString()) {
+		return ThrowException(String::New("Token was not a string"));
+	}
+	v8::String::AsciiValue base64(args[1]);
 
 	if (!args[2]->IsString()) {
 		return ThrowException(String::New("Message was not a string"));
 	}
 	v8::String::Utf8Value string(args[2]);
 
-	int err = obj->send(mac, base64, *string, string.length());
-	free(base64);
+	int err = obj->send(mac, *base64, *string, string.length());
 	NanReturnValue(Number::New(err));
 }
 
